@@ -1,0 +1,143 @@
+c-1-l2# show run
+
+!Command: show running-config
+!Running configuration last done at: Sat Jul 30 21:21:04 2022
+!Time: Sat Jul 30 22:03:33 2022
+
+version 9.3(9) Bios:version  
+hostname c-1-l2
+
+feature ospf
+feature pim
+feature interface-vlan
+feature hsrp
+
+ip domain-name lab.karneliuk.com
+
+ip pim rp-address 10.0.254.1 prefix-list PL_IPV4_MCAST_ASM
+ip pim rp-address 10.0.254.4 prefix-list PL_IPV4_MCAST_BIDIR_1 bidir
+ip pim rp-address 10.0.254.8 prefix-list PL_IPV4_MCAST_BIDIR_2 bidir
+ip pim log-neighbor-changes
+ip pim ssm range 232.0.0.0/8
+vlan 1,30,40
+vlan 30
+  name c-1-h3
+vlan 40
+  name c-1-h4
+
+ip prefix-list PL_IPV4_MCAST_ASM seq 10 permit 239.0.0.0/8 
+ip prefix-list PL_IPV4_MCAST_BIDIR_1 seq 10 permit 238.0.0.0/24 
+ip prefix-list PL_IPV4_MCAST_BIDIR_2 seq 10 permit 238.0.1.0/24 
+key chain KC_OSPF_CORE_DC
+  key 0
+    key-string 7 073c147c6b3b26363231392930151b051b00020d2123
+    accept-lifetime 00:00:00 Jul 29 2022  infinite
+    send-lifetime 00:00:00 Jul 29 2022  infinite
+    cryptographic-algorithm HMAC-SHA-256
+vrf context management
+  ip route 0.0.0.0/0 192.168.101.1
+  ipv6 route ::/0 fc00:192:168:101::1
+
+
+interface Vlan1
+
+interface Vlan30
+  no shutdown
+  ip address 10.12.30.2/24
+  ip ospf passive-interface
+  ip router ospf core-dc area 0.0.0.12
+  ip pim sparse-mode
+  ip pim passive
+  ip igmp version 3
+  hsrp version 2
+  hsrp 0 
+    preempt 
+    ip 10.12.30.1
+
+interface Vlan40
+  no shutdown
+  ip address 10.12.40.2/24
+  ip ospf passive-interface
+  ip router ospf core-dc area 0.0.0.12
+  ip pim sparse-mode
+  ip pim passive
+  ip igmp version 3
+  hsrp version 2
+  hsrp 0 
+    preempt 
+    priority 110
+    ip 10.12.40.1
+
+interface Ethernet1/1
+  no switchport
+  load-interval counter 1 5
+  ip address 10.0.0.9/31
+  ip ospf authentication key-chain KC_OSPF_CORE_DC
+  ip ospf network point-to-point
+  ip router ospf core-dc area 0.0.0.0
+  ip pim sparse-mode
+  ip pim hello-authentication ah-md5 3 1bbb7cfbdb63ab82b341510e2bb4c161
+  no shutdown
+
+interface Ethernet1/2
+  no switchport
+  load-interval counter 1 5
+  ip address 10.0.0.11/31
+  ip ospf authentication key-chain KC_OSPF_CORE_DC
+  ip ospf network point-to-point
+  ip router ospf core-dc area 0.0.0.0
+  ip pim sparse-mode
+  ip pim hello-authentication ah-md5 3 1bbb7cfbdb63ab82b341510e2bb4c161
+  no shutdown
+
+interface Ethernet1/3
+  no switchport
+  load-interval counter 1 5
+  ip address 10.0.0.21/31
+  ip ospf authentication key-chain KC_OSPF_CORE_DC
+  ip ospf network point-to-point
+  ip router ospf core-dc area 0.0.0.0
+  ip pim sparse-mode
+  ip pim hello-authentication ah-md5 3 1bbb7cfbdb63ab82b341510e2bb4c161
+  no shutdown
+
+interface Ethernet1/4
+  no switchport
+  load-interval counter 1 5
+  ip address 10.12.0.1/31
+  ip ospf authentication key-chain KC_OSPF_CORE_DC
+  ip ospf network point-to-point
+  ip router ospf core-dc area 0.0.0.12
+  ip pim sparse-mode
+  ip pim hello-authentication ah-md5 3 1bbb7cfbdb63ab82b341510e2bb4c161
+  no shutdown
+
+interface Ethernet1/5
+  switchport access vlan 40
+
+interface Ethernet1/6
+  shutdown
+
+interface Ethernet1/7
+  switchport access vlan 30
+
+interface mgmt0
+  vrf member management
+  ip address 192.168.101.31/24
+  ipv6 address fc00:192:168:101::31/64
+
+interface loopback0
+  ip address 10.0.255.31/32
+  ip router ospf core-dc area 0.0.0.0
+icam monitor scale
+
+line console
+line vty
+router ospf core-dc
+  router-id 10.0.255.31
+  log-adjacency-changes detail
+  area 0.0.0.12 range 10.12.0.0/16
+  area 0.0.0.0 authentication message-digest
+  area 0.0.0.12 authentication message-digest
+  timers throttle spf 50 50 1000
+  timers throttle lsa 0 50 1000
