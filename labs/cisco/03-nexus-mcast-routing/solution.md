@@ -1331,6 +1331,7 @@ c-1-s1:
 configure terminal
 !
 ip pim anycast-rp 10.0.254.1 10.0.255.20
+ip pim anycast-rp 10.0.254.1 10.0.255.21
 !
 ```
 
@@ -1339,6 +1340,7 @@ c-1-s2:
 configure terminal
 !
 ip pim anycast-rp 10.0.254.1 10.0.255.21
+ip pim anycast-rp 10.0.254.1 10.0.255.20
 !
 ```
 
