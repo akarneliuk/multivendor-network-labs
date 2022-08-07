@@ -655,6 +655,9 @@ vpc domain 101
    peer-gateway
    auto-recovery
    fast-convergence
+   ipv6 nd synchronize
+   ip arp synchronize
+
 !
 interface port-channel 1
    vpc peer-link
@@ -674,6 +677,9 @@ vpc domain 101
    peer-gateway
    auto-recovery
    fast-convergence
+   ipv6 nd synchronize
+   ip arp synchronize
+
 !
 interface port-channel 1
    vpc peer-link
@@ -693,6 +699,9 @@ vpc domain 201
    peer-gateway
    auto-recovery
    fast-convergence
+   ipv6 nd synchronize
+   ip arp synchronize
+
 !
 interface port-channel 1
    vpc peer-link
@@ -712,6 +721,9 @@ vpc domain 201
    peer-gateway
    auto-recovery
    fast-convergence
+   ipv6 nd synchronize
+   ip arp synchronize
+
 !
 interface port-channel 1
    vpc peer-link
@@ -731,6 +743,9 @@ vpc domain 202
    peer-gateway
    auto-recovery
    fast-convergence
+   ipv6 nd synchronize
+   ip arp synchronize
+
 !
 interface port-channel 1
    vpc peer-link
@@ -750,6 +765,8 @@ vpc domain 202
    peer-gateway
    auto-recovery
    fast-convergence
+   ipv6 nd synchronize
+   ip arp synchronize
 !
 interface port-channel 1
    vpc peer-link
@@ -1511,15 +1528,15 @@ configure terminal
 interface vlan10
    no shutdown
    vrf member VRF_SERVICE_CUST_1
-   ip address 192.168.10.1/24
-   ipv6 address fc00:192:168:10::1/64
+   ip address 192.168.10.1/24 tag 10
+   ipv6 address fc00:192:168:10::1/64 tag 10
    fabric forwarding mode anycast-gateway
 !
 interface vlan20
    no shutdown
    vrf member VRF_SERVICE_CUST_1
-   ip address 192.168.20.1/24
-   ipv6 address fc00:192:168:20::1/64
+   ip address 192.168.20.1/24 tag 10
+   ipv6 address fc00:192:168:20::1/64 tag 10
    fabric forwarding mode anycast-gateway
 !
 ```
@@ -1624,11 +1641,204 @@ interface port-channel 2006
 #### Map VNIs to VTEP
 c-1-l1, c-1-l2, c-1-l3, c-1-l4:
 ```
+configure terminal
+!
+interface nve1
+   member vni 901001 associate-vrf
+   !
+   member vni 100010 mcast-group 239.11.11.10
+   !
+   member vni 100020 mcast-group 239.11.11.20
+   !
+!
+```
+
+c-1-b1, c-1-b2:
+```
+configure terminal
+!
+interface nve1
+   member vni 901001 associate-vrf
+   !
+!
 ```
 
 #### BGP
 c-1-l1, c-1-l2, c-1-l3, c-1-l4:
 ```
+configure terminal
+!
+route-map RP_REDISTRIBUTE_IN_EVPN_VRF permit 10
+  match tag 10
+!
+router bgp 65000
+   vrf VRF_SERVICE_CUST_1
+      address-family ipv4 unicast
+         redistribute direct route-map RP_REDISTRIBUTE_IN_EVPN_VRF
+!
 ```
 
 ### Customer 2
+#### VRF
+c-1-b1, c-1-b2, c-1-l1, c-1-l2, c-1-l3, c-1-l4:
+```
+configure terminal
+!
+vrf context VRF_SERVICE_CUST_2
+   vni 901002
+   rd auto
+   address-family ipv4 unicast
+      route-target both auto
+      route-target both auto evpn
+   !
+   address-family ipv6 unicast
+      route-target both auto
+      route-target both auto evpn
+   !
+!
+```
+#### Core-facing VLAN
+c-1-b1, c-1-b2, c-1-l1, c-1-l2, c-1-l3, c-1-l4:
+```
+configure terminal
+!
+vlan 1002
+   name core_svi_vrf_service_cust_2s
+   vn-segment 901002
+!
+```
+
+#### Core-facing SVI
+c-1-b1, c-1-b2, c-1-l1, c-1-l2, c-1-l3, c-1-l4:
+```
+configure terminal
+!
+interface vlan1002
+   no shutdown
+   vrf member VRF_SERVICE_CUST_2
+   ip forward
+   no ip redirects
+   ipv6 address use-link-local-only
+   no ipv6 redirects
+!
+```
+
+#### User-facing VLAN
+c-1-l1, c-1-l2, c-1-l3, c-1-l4:
+```
+configure terminal
+!
+vlan 30
+   name user_svi_1_vrf_service_cust_2
+   vn-segment 100030
+!
+```
+
+#### User-facing SVI
+c-1-l1, c-1-l2, c-1-l3, c-1-l4:
+```
+configure terminal
+!
+interface vlan30
+   no shutdown
+   vrf member VRF_SERVICE_CUST_2
+   ip address 192.168.30.1/24 tag 10
+   ipv6 address fc00:192:168:30::1/64 tag 10
+   fabric forwarding mode anycast-gateway
+!
+```
+
+#### User-facing physical interfaces
+c-1-l2:
+```
+configure terminal
+!
+interface ethernet 1/5
+   switchport
+   switchport mode access
+   switchport access vlan 30
+   no shutdown
+!
+```
+
+c-1-l3:
+```
+configure terminal
+!
+interface ethernet 1/7
+   switchport
+   switchport mode access
+   switchport access vlan 30
+   channel-group 2007 mode active
+!
+interface port-channel 2007
+   vpc 2007
+!
+```
+
+c-1-l4:
+```
+configure terminal
+!
+interface ethernet 1/7
+   switchport
+   switchport mode access
+   switchport access vlan 30
+   channel-group 2007 mode active
+!
+interface port-channel 2007
+   vpc 2007
+!
+```
+
+#### Map VNIs to VTEP
+c-1-l1, c-1-l2, c-1-l3, c-1-l4:
+```
+configure terminal
+!
+interface nve1
+   member vni 901002 associate-vrf
+   !
+   member vni 100030 mcast-group 239.11.11.30
+   !
+!
+```
+
+c-1-b1, c-1-b2:
+```
+configure terminal
+!
+interface nve1
+   member vni 901002 associate-vrf
+   !
+!
+```
+
+#### BGP
+c-1-l1, c-1-l2, c-1-l3, c-1-l4:
+```
+configure terminal
+!
+router bgp 65000
+   vrf VRF_SERVICE_CUST_2
+      address-family ipv4 unicast
+         redistribute direct route-map RP_REDISTRIBUTE_IN_EVPN_VRF
+!
+```
+
+### VRF Leaking
+c-1-l1, c-1-l2, c-1-l3, c-1-l4:
+```
+configure terminal
+!
+vrf context VRF_SERVICE_CUST_1
+   address-family ipv4 unicast
+      route-target import 65000:901002
+   !
+!
+vrf context VRF_SERVICE_CUST_2
+   address-family ipv4 unicast
+      route-target import 65000:901001
+   !
+!
+```
