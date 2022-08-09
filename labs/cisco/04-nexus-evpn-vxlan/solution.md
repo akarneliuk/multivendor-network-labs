@@ -1842,3 +1842,97 @@ vrf context VRF_SERVICE_CUST_2
    !
 !
 ```
+
+## Connection to external network
+### Physical link on DC side
+c-1-b1:
+```
+configure terminal
+!
+interface ethernet 1/5
+   no swhitchport
+   no shutdown
+!
+interface ethernet 1/5.10
+   encapsulation dot1q 10
+   vrf member VRF_SERVICE_CUST_1
+   ip address 169.254.0.0/31
+   ipv6 address fc00:169:254::/127
+   no shutdown
+!
+```
+
+c-1-b2:
+```
+configure terminal
+!
+interface ethernet 1/5
+   no switchport
+   no shutdown
+!
+interface ethernet 1/5.10
+   encapsulation dot1q 10
+   vrf member VRF_SERVICE_CUST_1
+   ip address 169.254.0.2/31
+   ipv6 address fc00:169:254::2/127
+   no shutdown
+!
+```
+
+### VRF on the PE side
+c-1-g1:
+```
+configure terminal
+!
+vrf definition VRF_SERVICE_CUST_1
+   rd 65001:1
+   address-family ipv4 unicast
+      route-target both 65001:1
+   !
+   address-family ipv6 unicast
+      route-target both 65001:1
+   !
+!
+```
+
+
+### Physical links on the PE side
+c-1-g1:
+```
+configure terminal
+!
+interface GigabitEthernet 5
+   load-interval 30
+   no shutdown
+   cdp enable
+!
+interface GigabitEthernet 5.10
+   encapsulation dot1q 10
+   vrf forwarding VRF_SERVICE_CUST_1
+   ip address 169.254.0.1 255.255.255.254
+   ipv6 address fc00:169:254::1/127
+   no shutdown
+!
+interface GigabitEthernet 6
+   load-interval 30
+   no shutdown
+   cdp enable
+!
+interface GigabitEthernet 6.10
+   encapsulation dot1q 10
+   vrf forwarding VRF_SERVICE_CUST_1
+   ip address 169.254.0.3 255.255.255.254
+   ipv6 address fc00:169:254::3/127
+   no shutdown
+!
+interface GigabitEthernet4
+   vrf forwarding VRF_SERVICE_CUST_1
+   ip address 192.168.254.1 255.255.255.0
+   negotiation auto
+   ipv6 address FC00:192:168:254::1/64
+!
+```
+
+### BGP Option-A (DC side)
+
+### BGP Option-A (PE side)
