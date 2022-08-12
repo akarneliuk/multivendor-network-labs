@@ -1933,6 +1933,172 @@ interface GigabitEthernet4
 !
 ```
 
-### BGP Option-A (DC side)
+### Route-policy for BGP (DC side)
+c-1-b1, c-1-b2:
+```
+configure terminal
+!
+ip prefix-list PL_IPV4_AS65000_ROUTES seq 10 permit 192.168.0.0/16 le 24
+ipv6 prefix-list PL_IPV6_AS65000_ROUTES seq 10 permit fc00:192:168::/48 le 64
+!
+route-map RP_IPV4_BGP_EXPORT permit 10
+   match ip address prefix-list PL_IPV4_AS65000_ROUTES
+   set community 65000:100
+route-map RP_IPV4_BGP_EXPORT deny 9999
+!
+route-map RP_IPV6_BGP_EXPORT permit 10
+   match ip address prefix-list PL_IPV6_AS65000_ROUTES
+   set community 65000:100
+route-map RP_IPV6_BGP_EXPORT deny 9999
+!
+route-map RP_IPV4_BGP_IMPORT permit 10
+!
+route-map RP_IPV6_BGP_IMPORT permit 10
+!
+```
 
+### BGP Option-A (DC side)
+c-1-b1:
+```
+configure terminal
+!
+router bgp 65000
+   !
+   vrf VRF_SERVICE_CUST_1
+      log-neighbor-changes
+      !
+      neighbor 169.254.0.1 remote-as 65001
+         password inter_as
+         address-family ipv4 unicast
+            send-community
+            route-map RP_IPV4_BGP_EXPORT out
+            route-map RP_IPV4_BGP_IMPORT in
+         !
+      !
+      neighbor fc00:169:254::1 remote-as 65001
+         password inter_as
+         address-family ipv6 unicast
+            send-community
+            route-map RP_IPV6_BGP_EXPORT out
+            route-map RP_IPV6_BGP_IMPORT in
+         !
+      !
+   !
+!
+```
+
+c-1-b2:
+```
+configure terminal
+!
+router bgp 65000
+   !
+   vrf VRF_SERVICE_CUST_1
+      log-neighbor-changes
+      !
+      neighbor 169.254.0.3 remote-as 65001
+         password inter_as
+         address-family ipv4 unicast
+            send-community
+            route-map RP_IPV4_BGP_EXPORT out
+            route-map RP_IPV4_BGP_IMPORT in
+         !
+      !
+      neighbor fc00:169:254::3 remote-as 65001
+         password inter_as
+         address-family ipv6 unicast
+            send-community
+            route-map RP_IPV6_BGP_EXPORT out
+            route-map RP_IPV6_BGP_IMPORT in
+         !
+      !
+   !
+!
+```
+
+### Route-policy for BGP (PE side)
+c-1-g1:
+```
+configure terminal
+!
+ip prefix-list PL_IPV4_AS65001_ROUTES seq 10 permit 192.168.254.0/24
+ipv6 prefix-list PL_IPV6_AS65001_ROUTES seq 10 permit fc00:192:168:254::/64
+!
+route-map RP_IPV4_BGP_EXPORT permit 10
+   match ip address prefix-list PL_IPV4_AS65001_ROUTES
+   set community 65001:100
+route-map RP_IPV4_BGP_EXPORT deny 9999
+!
+route-map RP_IPV6_BGP_EXPORT permit 10
+   match ip address prefix-list PL_IPV6_AS65001_ROUTES
+   set community 65001:100
+route-map RP_IPV6_BGP_EXPORT deny 9999
+!
+ip as-path access-list 1 permit ^65000$
+!
+route-map RP_IPV4_BGP_IMPORT permit 10
+   match as-path 1
+route-map RP_IPV4_BGP_IMPORT deny 9999
+!
+route-map RP_IPV6_BGP_IMPORT permit 10
+   match as-path 1
+route-map RP_IPV6_BGP_IMPORT deny 9999
+!
+```
 ### BGP Option-A (PE side)
+c-1-g1:
+```
+configure terminal
+!
+router bgp 65001
+   bgp router-id 192.168.255.130
+   bgp log-neighbor-changes
+   !
+   address-family ipv4 unicast vrf VRF_SERVICE_CUST_1
+      neighbor 169.254.0.0 remote-as 65000
+      neighbor 169.254.0.0 password inter_as
+      neighbor 169.254.0.0 send-community
+      neighbor 169.254.0.0 route-map RP_IPV4_BGP_EXPORT out
+      neighbor 169.254.0.0 route-map RP_IPV4_BGP_IMPORT in
+      !
+      neighbor 169.254.0.2 remote-as 65000
+      neighbor 169.254.0.2 password inter_as
+      neighbor 169.254.0.2 send-community
+      neighbor 169.254.0.2 route-map RP_IPV4_BGP_EXPORT out
+      neighbor 169.254.0.2 route-map RP_IPV4_BGP_IMPORT in
+      !
+      redistribute connected route-map RP_IPV4_BGP_EXPORT
+   !
+   address-family ipv6 unicast vrf VRF_SERVICE_CUST_1
+      neighbor fc00:169:254:: remote-as 65000
+      neighbor fc00:169:254:: password inter_as
+      neighbor fc00:169:254:: send-community
+      neighbor fc00:169:254:: route-map RP_IPV6_BGP_EXPORT out
+      neighbor fc00:169:254:: route-map RP_IPV6_BGP_IMPORT in
+      !
+      neighbor fc00:169:254::2 remote-as 65000
+      neighbor fc00:169:254::2 password inter_as
+      neighbor fc00:169:254::2 send-community
+      neighbor fc00:169:254::2 route-map RP_IPV6_BGP_EXPORT out
+      neighbor fc00:169:254::2 route-map RP_IPV6_BGP_IMPORT in
+      !
+      redistribute connected route-map RP_IPV6_BGP_EXPORT
+   !
+!
+```
+
+#### BGP ecmp for leafs
+c-1-l[1-4]:
+```
+configure terminal
+!
+router bgp 65000
+   vrf VRF_SERVICE_CUST_1
+      address-family ipv4 unicast
+         advertise l2vpn evpn
+         maximum-paths 2
+         maximum-paths ibgp 2
+      !
+   !
+!
+```

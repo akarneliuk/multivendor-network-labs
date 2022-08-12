@@ -1,0 +1,264 @@
+c-1-l3# show run
+
+!Command: show running-config
+!Running configuration last done at: Fri Aug 12 09:40:10 2022
+!Time: Fri Aug 12 10:12:58 2022
+
+version 9.3(9) Bios:version  
+hostname c-1-l3
+
+cfs eth distribute
+nv overlay evpn
+feature ospf
+feature bgp
+feature pim
+feature interface-vlan
+feature vn-segment-vlan-based
+feature lacp
+feature vpc
+feature nv overlay
+
+ip domain-lookup
+ip domain-name lab.karneliuk.com
+
+fabric forwarding anycast-gateway-mac 0000.005e.1234
+ip pim rp-address 10.0.254.1 prefix-list PL_IPV4_ASM_VTEP
+ip pim log-neighbor-changes
+ip pim ssm range 232.0.0.0/8
+vlan 1-2,10,20,30,1001-1002
+vlan 2
+  name ix_vlan_to_peer
+vlan 10
+  name user_svi_1_vrf_service_cust_1
+  vn-segment 100010
+vlan 20
+  name user_svi_2_vrf_service_cust_1
+  vn-segment 100020
+vlan 30
+  name user_svi_1_vrf_service_cust_2
+  vn-segment 100030
+vlan 1001
+  name core_svi_vrf_service_cust_1
+  vn-segment 901001
+vlan 1002
+  name core_svi_vrf_service_cust_2s
+  vn-segment 901002
+
+ip prefix-list PL_IPV4_ASM_VTEP seq 10 permit 239.11.11.0/24 
+route-map RP_REDISTRIBUTE_IN_EVPN_VRF permit 10
+  match tag 10 
+key chain KC_OSPF_AUTH
+  key 0
+    key-string 7 073c147c6b3b262a24222d33340b1817
+    accept-lifetime 00:00:00 Aug 06 2022  infinite
+    send-lifetime 00:00:00 Aug 06 2022  infinite
+    cryptographic-algorithm HMAC-SHA-256
+vrf context VRF_SERVICE_CUST_1
+  vni 901001
+  rd auto
+  address-family ipv4 unicast
+    route-target both auto
+    route-target both auto evpn
+    route-target import 65000:901002
+  address-family ipv6 unicast
+    route-target both auto
+    route-target both auto evpn
+vrf context VRF_SERVICE_CUST_2
+  vni 901002
+  rd auto
+  address-family ipv4 unicast
+    route-target both auto
+    route-target both auto evpn
+    route-target import 65000:901001
+  address-family ipv6 unicast
+    route-target both auto
+    route-target both auto evpn
+vrf context management
+  ip route 0.0.0.0/0 192.168.101.1
+  ipv6 route ::/0 fc00:192:168:101::1
+vpc domain 202
+  peer-switch
+  role priority 1
+  peer-keepalive destination 192.168.101.33 source 192.168.101.32
+  peer-gateway
+  auto-recovery
+  fast-convergence
+  ipv6 nd synchronize
+  ip arp synchronize
+
+
+interface Vlan1
+  no ip redirects
+  no ipv6 redirects
+
+interface Vlan2
+  no shutdown
+  no ip redirects
+  ip address 10.0.0.26/31
+  no ipv6 redirects
+  ip ospf authentication key-chain KC_OSPF_AUTH
+  ip ospf network point-to-point
+  ip router ospf fabric area 0.0.0.0
+  ip pim sparse-mode
+  ip pim hello-authentication ah-md5 3 786ca196244b2dc1904531ce1c5a0ac6
+
+interface Vlan10
+  no shutdown
+  vrf member VRF_SERVICE_CUST_1
+  no ip redirects
+  ip address 192.168.10.1/24 tag 10
+  ipv6 address fc00:192:168:10::1/64 tag 10
+  no ipv6 redirects
+  fabric forwarding mode anycast-gateway
+
+interface Vlan20
+  no shutdown
+  vrf member VRF_SERVICE_CUST_1
+  no ip redirects
+  ip address 192.168.20.1/24 tag 10
+  ipv6 address fc00:192:168:20::1/64 tag 10
+  no ipv6 redirects
+  fabric forwarding mode anycast-gateway
+
+interface Vlan30
+  no shutdown
+  vrf member VRF_SERVICE_CUST_2
+  no ip redirects
+  ip address 192.168.30.1/24 tag 10
+  ipv6 address fc00:192:168:30::1/64 tag 10
+  no ipv6 redirects
+  fabric forwarding mode anycast-gateway
+
+interface Vlan1001
+  no shutdown
+  vrf member VRF_SERVICE_CUST_1
+  no ip redirects
+  ip forward
+  ipv6 address use-link-local-only
+  no ipv6 redirects
+
+interface Vlan1002
+  no shutdown
+  vrf member VRF_SERVICE_CUST_2
+  no ip redirects
+  ip forward
+  ipv6 address use-link-local-only
+  no ipv6 redirects
+
+interface port-channel1
+  switchport mode trunk
+  spanning-tree port type network
+  vpc peer-link
+
+interface port-channel2006
+  switchport access vlan 20
+  vpc 2006
+
+interface port-channel2007
+  switchport access vlan 30
+  vpc 2007
+
+interface nve1
+  no shutdown
+  host-reachability protocol bgp
+  advertise virtual-rmac
+  source-interface loopback0
+  member vni 100010 mcast-group 239.11.11.10
+  member vni 100020 mcast-group 239.11.11.20
+  member vni 100030 mcast-group 239.11.11.30
+  member vni 901001 associate-vrf
+  member vni 901002 associate-vrf
+
+interface Ethernet1/1
+  no switchport
+  load-interval counter 1 5
+  ip address 10.0.0.9/31
+  ip ospf authentication key-chain KC_OSPF_AUTH
+  ip ospf network point-to-point
+  ip router ospf fabric area 0.0.0.0
+  ip pim sparse-mode
+  ip pim hello-authentication ah-md5 3 786ca196244b2dc1904531ce1c5a0ac6
+  no shutdown
+
+interface Ethernet1/2
+  no switchport
+  load-interval counter 1 5
+  ip address 10.0.0.11/31
+  ip ospf authentication key-chain KC_OSPF_AUTH
+  ip ospf network point-to-point
+  ip router ospf fabric area 0.0.0.0
+  ip pim sparse-mode
+  ip pim hello-authentication ah-md5 3 786ca196244b2dc1904531ce1c5a0ac6
+  no shutdown
+
+interface Ethernet1/3
+  switchport mode trunk
+  channel-group 1 mode active
+
+interface Ethernet1/4
+  switchport mode trunk
+  channel-group 1 mode active
+
+interface Ethernet1/5
+  switchport access vlan 10
+
+interface Ethernet1/6
+  switchport access vlan 20
+  channel-group 2006 mode active
+
+interface Ethernet1/7
+  switchport access vlan 30
+  channel-group 2007 mode active
+
+interface mgmt0
+  vrf member management
+  ip address 192.168.101.32/24
+  ipv6 address fc00:192:168:101::32/64
+
+interface loopback0
+  ip address 10.0.255.32/32
+  ip address 10.0.254.202/32 secondary
+  ip router ospf fabric area 0.0.0.0
+  ip pim sparse-mode
+icam monitor scale
+
+line console
+line vty
+router ospf fabric
+  router-id 10.0.255.32
+  log-adjacency-changes detail
+  area 0.0.0.0 authentication message-digest
+  timers throttle spf 50 50 1000
+  timers lsa-arrival 10
+  timers throttle lsa 0 50 1000
+router bgp 65000
+  router-id 10.0.255.32
+  log-neighbor-changes
+  address-family l2vpn evpn
+    advertise-pip
+  template peer TP_IBGP_EVPN_RR
+    inherit peer-session TPS_IBGP_EVPN_RR
+    address-family l2vpn evpn
+      inherit peer-policy TPP_IBGP_EVPN_RR 1
+  template peer-policy TPP_IBGP_EVPN_RR
+    send-community
+    send-community extended
+    next-hop-self
+  template peer-session TPS_IBGP_EVPN_RR
+    password 3 d3cc0fa8508f0687adc2ef9589f13807
+    update-source loopback0
+  neighbor 10.0.255.20
+    inherit peer TP_IBGP_EVPN_RR
+    remote-as 65000
+  neighbor 10.0.255.21
+    inherit peer TP_IBGP_EVPN_RR
+    remote-as 65000
+  vrf VRF_SERVICE_CUST_1
+    address-family ipv4 unicast
+      advertise l2vpn evpn
+      redistribute direct route-map RP_REDISTRIBUTE_IN_EVPN_VRF
+      maximum-paths 2
+      maximum-paths ibgp 2
+  vrf VRF_SERVICE_CUST_2
+    address-family ipv4 unicast
+      redistribute direct route-map RP_REDISTRIBUTE_IN_EVPN_VRF

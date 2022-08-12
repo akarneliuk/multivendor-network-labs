@@ -1,0 +1,169 @@
+c-1-s1# show run
+
+!Command: show running-config
+!Running configuration last done at: Sat Aug  6 20:53:48 2022
+!Time: Fri Aug 12 10:06:10 2022
+
+version 9.3(9) Bios:version  
+hostname c-1-s1
+
+nv overlay evpn
+feature ospf
+feature bgp
+feature pim
+feature nv overlay
+
+ip domain-lookup
+ip domain-name lab.karneliuk.com
+
+ip pim rp-address 10.0.254.1 prefix-list PL_IPV4_ASM_VTEP
+ip pim log-neighbor-changes
+ip pim ssm range 232.0.0.0/8
+ip pim anycast-rp 10.0.254.1 10.0.255.20
+ip pim anycast-rp 10.0.254.1 10.0.255.21
+vlan 1
+
+ip prefix-list PL_IPV4_ASM_VTEP seq 10 permit 239.11.11.0/24 
+key chain KC_OSPF_AUTH
+  key 0
+    key-string 7 073c147c6b3b262a24222d33340b1817
+    accept-lifetime 00:00:00 Aug 06 2022  infinite
+    send-lifetime 00:00:00 Aug 06 2022  infinite
+    cryptographic-algorithm HMAC-SHA-256
+vrf context management
+  ip route 0.0.0.0/0 192.168.101.1
+  ipv6 route ::/0 fc00:192:168:101::1
+
+
+interface Ethernet1/1
+  no switchport
+
+interface Ethernet1/2
+  no switchport
+
+interface Ethernet1/3
+  no switchport
+
+interface Ethernet1/4
+  no switchport
+  load-interval counter 1 5
+  ip address 10.0.0.0/31
+  ip ospf authentication key-chain KC_OSPF_AUTH
+  ip ospf network point-to-point
+  ip router ospf fabric area 0.0.0.0
+  ip pim sparse-mode
+  ip pim hello-authentication ah-md5 3 786ca196244b2dc1904531ce1c5a0ac6
+  no shutdown
+
+interface Ethernet1/5
+  no switchport
+  load-interval counter 1 5
+  ip address 10.0.0.4/31
+  ip ospf authentication key-chain KC_OSPF_AUTH
+  ip ospf network point-to-point
+  ip router ospf fabric area 0.0.0.0
+  ip pim sparse-mode
+  ip pim hello-authentication ah-md5 3 786ca196244b2dc1904531ce1c5a0ac6
+  no shutdown
+
+interface Ethernet1/6
+  no switchport
+  load-interval counter 1 5
+  ip address 10.0.0.8/31
+  ip ospf authentication key-chain KC_OSPF_AUTH
+  ip ospf network point-to-point
+  ip router ospf fabric area 0.0.0.0
+  ip pim sparse-mode
+  ip pim hello-authentication ah-md5 3 786ca196244b2dc1904531ce1c5a0ac6
+  no shutdown
+
+interface Ethernet1/7
+  no switchport
+  load-interval counter 1 5
+  ip address 10.0.0.12/31
+  ip ospf authentication key-chain KC_OSPF_AUTH
+  ip ospf network point-to-point
+  ip router ospf fabric area 0.0.0.0
+  ip pim sparse-mode
+  ip pim hello-authentication ah-md5 3 786ca196244b2dc1904531ce1c5a0ac6
+  no shutdown
+
+interface Ethernet1/8
+  no switchport
+  load-interval counter 1 5
+  ip address 10.0.0.16/31
+  ip ospf authentication key-chain KC_OSPF_AUTH
+  ip ospf network point-to-point
+  ip router ospf fabric area 0.0.0.0
+  ip pim sparse-mode
+  ip pim hello-authentication ah-md5 3 786ca196244b2dc1904531ce1c5a0ac6
+  no shutdown
+
+interface Ethernet1/9
+  no switchport
+  load-interval counter 1 5
+  ip address 10.0.0.20/31
+  ip ospf authentication key-chain KC_OSPF_AUTH
+  ip ospf network point-to-point
+  ip router ospf fabric area 0.0.0.0
+  ip pim sparse-mode
+  ip pim hello-authentication ah-md5 3 786ca196244b2dc1904531ce1c5a0ac6
+  no shutdown
+
+interface mgmt0
+  vrf member management
+  ip address 192.168.101.20/24
+  ipv6 address fc00:192:168:101::20/64
+
+interface loopback0
+  ip address 10.0.255.20/32
+  ip router ospf fabric area 0.0.0.0
+  ip pim sparse-mode
+
+interface loopback1
+  ip address 10.0.254.1/32
+  ip router ospf fabric area 0.0.0.0
+  ip pim sparse-mode
+icam monitor scale
+
+line console
+line vty
+router ospf fabric
+  router-id 10.0.255.20
+  log-adjacency-changes detail
+  area 0.0.0.0 authentication message-digest
+  timers throttle spf 50 50 1000
+  timers lsa-arrival 10
+  timers throttle lsa 0 50 1000
+router bgp 65000
+  router-id 10.0.255.20
+  log-neighbor-changes
+  template peer TP_IBGP_EVPN_VTEPS
+    inherit peer-session TPS_IBGP_EVPN_VTEPS
+    address-family l2vpn evpn
+      inherit peer-policy TPP_IBGP_EVPN_VTEPS 1
+  template peer-policy TPP_IBGP_EVPN_VTEPS
+    send-community
+    send-community extended
+    route-reflector-client
+  template peer-session TPS_IBGP_EVPN_VTEPS
+    password 3 d3cc0fa8508f0687adc2ef9589f13807
+    update-source loopback0
+  neighbor 10.0.255.18
+    inherit peer TP_IBGP_EVPN_VTEPS
+    remote-as 65000
+  neighbor 10.0.255.19
+    inherit peer TP_IBGP_EVPN_VTEPS
+    remote-as 65000
+  neighbor 10.0.255.30
+    inherit peer TP_IBGP_EVPN_VTEPS
+    remote-as 65000
+  neighbor 10.0.255.31
+    inherit peer TP_IBGP_EVPN_VTEPS
+    remote-as 65000
+  neighbor 10.0.255.32
+    inherit peer TP_IBGP_EVPN_VTEPS
+    remote-as 65000
+  neighbor 10.0.255.33
+    inherit peer TP_IBGP_EVPN_VTEPS
+    remote-as 65000

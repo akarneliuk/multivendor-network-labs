@@ -1,0 +1,185 @@
+ct-1-g1#show run
+Building configuration...
+
+Current configuration : 6038 bytes
+!
+! Last configuration change at 09:58:50 UTC Fri Aug 12 2022 by admin
+!
+hostname ct-1-g1
+!
+boot-start-marker
+boot-end-marker
+!
+!
+vrf definition VRF_SERVICE_CUST_1
+ rd 65001:1
+ !
+ address-family ipv4
+  route-target export 65001:1
+  route-target import 65001:1
+ exit-address-family
+ !
+ address-family ipv6
+  route-target export 65001:1
+  route-target import 65001:1
+ exit-address-family
+!
+vrf definition mgmt
+ !
+ address-family ipv4
+ exit-address-family
+ !
+ address-family ipv6
+ exit-address-family
+!         
+!
+ip domain name lab.karneliuk.com
+!
+!
+!
+ipv6 unicast-routing
+!
+!
+!
+!
+!
+!
+!
+subscriber templating
+multilink bundle-name authenticated
+!         
+!
+cdp run
+!
+ip ssh logging events
+ip ssh version 2
+!
+!
+!
+!
+interface Loopback0
+ ip address 192.168.255.130 255.255.255.255
+!         
+interface GigabitEthernet1
+ vrf forwarding mgmt
+ ip address 192.168.101.10 255.255.255.0
+ negotiation auto
+ ipv6 address FC00:192:168:101::10/64
+!
+interface GigabitEthernet4
+ vrf forwarding VRF_SERVICE_CUST_1
+ ip address 192.168.254.1 255.255.255.0
+ negotiation auto
+ ipv6 address FC00:192:168:254::1/64
+!
+interface GigabitEthernet5
+ no ip address
+ load-interval 30
+ negotiation auto
+ cdp enable
+!
+interface GigabitEthernet5.10
+ encapsulation dot1Q 10
+ vrf forwarding VRF_SERVICE_CUST_1
+ ip address 169.254.0.1 255.255.255.254
+ ipv6 address FC00:169:254::1/127
+!
+interface GigabitEthernet6
+ no ip address
+ load-interval 30
+ negotiation auto
+ cdp enable
+!
+interface GigabitEthernet6.10
+ encapsulation dot1Q 10
+ vrf forwarding VRF_SERVICE_CUST_1
+ ip address 169.254.0.3 255.255.255.254
+ ipv6 address FC00:169:254::3/127
+!
+router bgp 65001
+ bgp router-id 192.168.255.130
+ bgp log-neighbor-changes
+ !
+ address-family ipv4 vrf VRF_SERVICE_CUST_1
+  redistribute connected route-map RP_IPV4_BGP_EXPORT
+  neighbor 169.254.0.0 remote-as 65000
+  neighbor 169.254.0.0 password inter_as
+  neighbor 169.254.0.0 activate
+  neighbor 169.254.0.0 send-community
+  neighbor 169.254.0.0 route-map RP_IPV4_BGP_IMPORT in
+  neighbor 169.254.0.0 route-map RP_IPV4_BGP_EXPORT out
+  neighbor 169.254.0.2 remote-as 65000
+  neighbor 169.254.0.2 password inter_as
+  neighbor 169.254.0.2 activate
+  neighbor 169.254.0.2 send-community
+  neighbor 169.254.0.2 route-map RP_IPV4_BGP_IMPORT in
+  neighbor 169.254.0.2 route-map RP_IPV4_BGP_EXPORT out
+ exit-address-family
+ !
+ address-family ipv6 vrf VRF_SERVICE_CUST_1
+  redistribute connected route-map RP_IPV6_BGP_EXPORT
+  neighbor FC00:169:254:: remote-as 65000
+  neighbor FC00:169:254:: password inter_as
+  neighbor FC00:169:254:: activate
+  neighbor FC00:169:254:: send-community
+  neighbor FC00:169:254:: route-map RP_IPV6_BGP_IMPORT in
+  neighbor FC00:169:254:: route-map RP_IPV6_BGP_EXPORT out
+  neighbor FC00:169:254::2 remote-as 65000
+  neighbor FC00:169:254::2 password inter_as
+  neighbor FC00:169:254::2 activate
+  neighbor FC00:169:254::2 send-community
+  neighbor FC00:169:254::2 route-map RP_IPV6_BGP_IMPORT in
+  neighbor FC00:169:254::2 route-map RP_IPV6_BGP_EXPORT out
+ exit-address-family
+!
+!
+virtual-service csr_mgmt
+!
+ip forward-protocol nd
+!
+ip as-path access-list 1 permit ^65000$
+!
+ip prefix-list PL_IPV4_AS65001_ROUTES seq 10 permit 192.168.254.0/24
+!
+!
+ipv6 prefix-list PL_IPV6_AS65001_ROUTES seq 10 permit FC00:192:168:254::/64
+route-map RP_IPV6_BGP_IMPORT permit 10
+ match as-path 1
+!
+route-map RP_IPV6_BGP_IMPORT deny 9999
+!
+route-map RP_IPV4_BGP_IMPORT permit 10
+ match as-path 1
+!
+route-map RP_IPV4_BGP_IMPORT deny 9999
+!
+route-map RP_IPV6_BGP_EXPORT permit 10
+ match ip address prefix-list PL_IPV6_AS65001_ROUTES
+ set community 4259905636
+!
+route-map RP_IPV6_BGP_EXPORT deny 9999
+!
+route-map RP_IPV4_BGP_EXPORT permit 10
+ match ip address prefix-list PL_IPV4_AS65001_ROUTES
+ set community 4259905636
+!
+route-map RP_IPV4_BGP_EXPORT deny 9999
+!
+!
+!
+!
+!
+control-plane
+!
+!
+line con 0
+ stopbits 1
+line aux 0
+ stopbits 1
+line vty 0 4
+ privilege level 15
+line vty 5 97
+ privilege level 15
+!
+!
+end
