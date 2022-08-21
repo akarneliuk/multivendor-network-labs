@@ -1,0 +1,3 @@
+aaa@c-3-o2:~/nginx$ sudo docker container ls
+CONTAINER ID   IMAGE     COMMAND                  CREATED       STATUS       PORTS                                   NAMES
+93e1328dfd42   nginx     "/docker-entrypoint.…"   2 hours ago   Up 2 hours   0.0.0.0:8080->80/tcp, :::8080->80/tcp   nginx-web-1

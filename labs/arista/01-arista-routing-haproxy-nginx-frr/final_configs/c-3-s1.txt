@@ -1,0 +1,76 @@
+c-3-s1#copy running-config startup-config 
+Copy completed successfully.
+c-3-s1#show run
+! Command: show running-config
+! device: c-3-s1 (vEOS, EOS-4.26.0.1F)
+!
+! boot system flash:/vEOS-lab.swi
+!
+switchport default mode routed
+!
+transceiver qsfp default-mode 4x10G
+!
+service routing protocols model multi-agent
+!
+hostname c-3-s1
+dns domain lab.karneliuk.com
+!
+spanning-tree mode mstp
+!
+aaa authentication enable default none
+!
+no aaa root
+!
+vrf instance mgmt
+!
+interface Ethernet1
+   no switchport
+   ip address 10.0.0.0/31
+!
+interface Ethernet2
+   no switchport
+   ip address 10.0.0.2/31
+!
+interface Ethernet3
+   no switchport
+   ip address 10.0.0.4/31
+!
+interface Loopback0
+   ip address 10.0.255.101/32
+!
+interface Management1
+   vrf mgmt
+   ip address 192.168.101.101/24
+   ipv6 address fc00:192:168:101::101/64
+!
+ip routing
+ip routing vrf mgmt
+!
+ipv6 unicast-routing
+!
+ip route vrf mgmt 0.0.0.0/0 192.168.101.1
+!
+ipv6 route vrf mgmt ::/0 fc00:192:168:101::1
+!
+router bgp 65002
+   router-id 10.0.255.101
+   neighbor PG_LEAF peer group
+   neighbor PG_LEAF bfd
+   neighbor PG_LEAF password 7 1EqiPp89U2icxSXKa2El0w==
+   neighbor PG_LEAF send-community extended
+   neighbor 10.0.0.1 peer group PG_LEAF
+   neighbor 10.0.0.1 remote-as 65001
+   neighbor 10.0.0.3 peer group PG_LEAF
+   neighbor 10.0.0.3 remote-as 65003
+   neighbor 10.0.0.5 peer group PG_LEAF
+   neighbor 10.0.0.5 remote-as 65004
+   !
+   address-family evpn
+      neighbor PG_LEAF activate
+      neighbor PG_LEAF next-hop-unchanged
+   !
+   address-family ipv4
+      neighbor PG_LEAF activate
+      network 10.0.255.101/32
+!
+end

@@ -1,0 +1,91 @@
+c-3-b1#show run
+! Command: show running-config
+! device: c-1-b1 (vEOS, EOS-4.26.0.1F)
+!
+! boot system flash:/vEOS-lab.swi
+!
+switchport default mode routed
+!
+transceiver qsfp default-mode 4x10G
+!
+service routing protocols model multi-agent
+!
+hostname c-3-b1
+dns domain lab.karneliuk.com
+!
+spanning-tree mode mstp
+!
+aaa authentication enable default none
+!
+no aaa root
+!
+vrf instance CUST_1
+!
+vrf instance mgmt
+!
+interface Ethernet1
+   no switchport
+   vrf CUST_1
+   ip address 10.2.0.0/31
+!
+interface Ethernet2
+   no switchport
+   ip address 10.0.0.1/31
+!
+interface Loopback0
+   ip address 10.0.255.100/32
+!
+interface Management0
+!
+interface Management1
+   vrf mgmt
+   ip address 192.168.101.100/24
+   ipv6 address fc00:192:168:101::100/64
+!
+interface Vxlan1
+   vxlan source-interface Loopback0
+   vxlan udp-port 4789
+   vxlan vrf CUST_1 vni 10001
+!
+ip routing
+ip routing vrf CUST_1
+ip routing vrf mgmt
+!
+ip prefix-list PL_IPV4_CUSTOMER_PREFIXES seq 10 deny 10.0.0.0/16 le 32
+ip prefix-list PL_IPV4_CUSTOMER_PREFIXES seq 20 permit 10.0.0.0/8 le 32
+!
+ipv6 unicast-routing
+!
+ip route vrf mgmt 0.0.0.0/0 192.168.101.1
+!
+ipv6 route vrf mgmt ::/0 fc00:192:168:101::1
+!
+route-map RP_IPV4_CUSTOMER_PREFIXES permit 10
+   match ip address prefix-list PL_IPV4_CUSTOMER_PREFIXES
+!
+route-map RP_IPV4_CUSTOMER_PREFIXES deny 9999
+!
+router bgp 65001
+   router-id 10.0.255.100
+   neighbor PG_SPINE peer group
+   neighbor PG_SPINE bfd
+   neighbor PG_SPINE password 7 GZN/UK/s3AQUmTGiceaUBQ==
+   neighbor PG_SPINE send-community extended
+   neighbor 10.0.0.0 peer group PG_SPINE
+   neighbor 10.0.0.0 remote-as 65002
+   !
+   address-family evpn
+      neighbor PG_SPINE activate
+   !
+   address-family ipv4
+      neighbor PG_SPINE activate
+      network 10.0.255.100/32
+   !
+   vrf CUST_1
+      rd 65000:1
+      route-target import evpn 65000:1
+      route-target export 65000:1
+      route-target export evpn 65000:1
+      redistribute connected route-map RP_IPV4_CUSTOMER_PREFIXES
+!
+end

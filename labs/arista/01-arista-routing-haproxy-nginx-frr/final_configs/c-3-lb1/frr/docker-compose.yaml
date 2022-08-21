@@ -1,0 +1,15 @@
+---
+version: "3.9"
+services:
+    frr:
+        image: frrouting/frr
+        network_mode: host
+        restart: always
+        volumes:
+          - frr_config:/etc/frr
+        privileged: true
+
+volumes:
+  frr_config:
+    driver: local
+...

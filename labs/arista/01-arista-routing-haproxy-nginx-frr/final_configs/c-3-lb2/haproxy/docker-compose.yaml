@@ -1,0 +1,10 @@
+---
+version: "3.9"
+services:
+    haproxy:
+        image: haproxy
+        restart: always
+        network_mode: host
+        volumes:
+          - ./config/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+...
