@@ -932,8 +932,17 @@ services:
         network_mode: host
         volumes:
           - ./config/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+          - ./ssl:/etc/ssl
 ...
 __EOF__
+```
+
+### Create self-signed certifiacte
+c-3-lb1, c-3-lb2:
+```
+mkdir ssl
+openssl req -x509 -newkey rsa:4096 -keyout ssl/key.pem -out ssl/cert.pem -sha256 -days 365 -nodes -subj '/CN=test-website.lab.karneliuk.com'
+cat ssl/cert.pem  ssl/key.pem > ssl/joined.pem
 ```
 
 ### Configure LB
@@ -958,7 +967,8 @@ defaults
 
 frontend webservers_vip
     bind 10.1.0.254:8080
-    mode http
+    bind 10.1.0.254:8443 ssl crt /etc/ssl/joined.pem
+    http-request redirect location https://10.1.0.254:8443 unless { ssl_fc }
     default_backend webservers_origin
 
 backend webservers_origin
